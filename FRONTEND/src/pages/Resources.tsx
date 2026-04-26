@@ -1,6 +1,19 @@
 // src/pages/Resources.tsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import GlassCard from '../components/ui/GlassCard'
+
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string
+const CHANNEL_ID = '@Emmanuel_Owusu_Jnr'
+
+console.log('YouTube API Key:', YOUTUBE_API_KEY)
+
+interface YouTubeVideo {
+  id: string
+  title: string
+  description: string
+  thumbnail: string
+  publishedAt: string
+}
 
 const ebooks = [
   {
@@ -33,29 +46,110 @@ const ebooks = [
   },
 ]
 
-const videos = [
-  {
-    title: 'Finding Peace in Troubled Times',
-    description: 'A comforting message of hope for challenging seasons of life.',
-    videoId: 'dQw4w9WgXcQ',
-    duration: '24:15'
-  },
-  {
-    title: 'Understanding God\'s Grace',
-    description: 'Exploring the beauty and depth of divine grace in our lives.',
-    videoId: 'dQw4w9WgXcQ',
-    duration: '31:42'
-  },
-  {
-    title: 'The Power of Community',
-    description: 'How fellowship and gathering strengthen our faith journey.',
-    videoId: 'dQw4w9WgXcQ',
-    duration: '28:10'
-  },
-]
+function formatDuration(isoDuration: string): string {
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return '0:00'
+  
+  const hours = match[1] ? parseInt(match[1]) : 0
+  const minutes = match[2] ? parseInt(match[2]) : 0
+  const seconds = match[3] ? parseInt(match[3]) : 0
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+  return `${Math.floor(diffDays / 365)} years ago`
+}
 
 export default function Resources() {
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
+  const [videos, setVideos] = useState<YouTubeVideo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        if (!YOUTUBE_API_KEY) {
+          throw new Error('YouTube API key not configured')
+        }
+
+        // First get the channel ID from the handle
+        const channelResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${CHANNEL_ID}&key=${YOUTUBE_API_KEY}`
+        )
+        
+        if (!channelResponse.ok) {
+          throw new Error('Failed to fetch channel information')
+        }
+
+        const channelData = await channelResponse.json()
+        
+        if (!channelData.items || channelData.items.length === 0) {
+          throw new Error('Channel not found')
+        }
+
+        const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads
+
+        // Fetch videos from the uploads playlist
+        const videosResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${uploadsPlaylistId}&key=${YOUTUBE_API_KEY}`
+        )
+
+        if (!videosResponse.ok) {
+          throw new Error('Failed to fetch videos')
+        }
+
+        const videosData = await videosResponse.json()
+
+        // Get video durations
+        const videoIds = videosData.items.map((item: any) => item.contentDetails.videoId).join(',')
+        const detailsResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        )
+
+        const detailsData = await detailsResponse.json()
+        const durationMap = new Map<string, string>()
+        
+        if (detailsData.items) {
+          detailsData.items.forEach((item: any) => {
+            durationMap.set(item.id, formatDuration(item.contentDetails.duration))
+          })
+        }
+
+        const formattedVideos: YouTubeVideo[] = videosData.items.map((item: any) => ({
+          id: item.contentDetails.videoId,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+          publishedAt: item.snippet.publishedAt,
+          duration: durationMap.get(item.contentDetails.videoId) || '0:00'
+        }))
+
+        setVideos(formattedVideos)
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching YouTube videos:', err)
+        setError('Unable to load videos. Please try again later.')
+        setLoading(false)
+      }
+    }
+
+    fetchVideos()
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto px-5 sm:px-6 py-16 md:py-24">
@@ -158,45 +252,66 @@ export default function Resources() {
           </div>
         )}
 
-        {/* Video Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => (
-            <GlassCard key={video.title} className="p-0 overflow-hidden">
-              
-              {/* Thumbnail */}
-              <div 
-                className="aspect-video bg-slate-200 relative cursor-pointer group"
-                onClick={() => setActiveVideo(video.videoId)}
-              >
-                <img
-                  src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
-                  alt={video.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                    <svg className="w-5 h-5 text-teal-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  </div>
-                </div>
-                <span className="absolute bottom-2 right-2 px-2.5 py-1 bg-slate-900/80 text-white text-xs font-medium rounded-lg backdrop-blur-sm">
-                  {video.duration}
-                </span>
-              </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div>
+            <p className="text-caption mt-4">Loading videos...</p>
+          </div>
+        )}
 
-              {/* Content */}
-              <div className="p-5">
-                <h3 className="text-base font-semibold text-slate-800 mb-1.5">
-                  {video.title}
-                </h3>
-                <p className="text-caption text-sm leading-relaxed">
-                  {video.description}
-                </p>
-              </div>
-            </GlassCard>
-          ))}
-        </div>
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <p className="text-slate-500">{error}</p>
+          </div>
+        )}
+
+        {/* Video Grid */}
+        {!loading && !error && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {videos.map((video) => (
+              <GlassCard key={video.id} className="p-0 overflow-hidden">
+                
+                {/* Thumbnail */}
+                <div 
+                  className="aspect-video bg-slate-200 relative cursor-pointer group"
+                  onClick={() => setActiveVideo(video.id)}
+                >
+                  <img
+                    src={video.thumbnail}
+                    alt={video.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <svg className="w-5 h-5 text-teal-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <span className="absolute bottom-2 right-2 px-2.5 py-1 bg-slate-900/80 text-white text-xs font-medium rounded-lg backdrop-blur-sm">
+                    {video.duration || '0:00'}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <h3 className="text-base font-semibold text-slate-800 mb-1.5">
+                    {video.title}
+                  </h3>
+                  <p className="text-caption text-sm leading-relaxed line-clamp-2">
+                    {video.description}
+                  </p>
+                  <p className="text-caption text-xs mt-2">
+                    {formatDate(video.publishedAt)}
+                  </p>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

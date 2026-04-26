@@ -1,0 +1,54 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-slate-700 antialiased;
+    background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 30%, #faf5ff 60%, #ecfdf5 100%);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-slate-800;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/50 backdrop-blur-xl border border-white/60;
+  }
+  
+  .glass-hover {
+    @apply hover:bg-white/70 hover:shadow-lg hover:border-white/80 transition-all duration-300;
+  }
+
+  .glass-card {
+    @apply glass rounded-2xl shadow-sm;
+  }
+
+  .glass-nav {
+    @apply bg-white/30 backdrop-blur-2xl border-b border-white/50;
+  }
+
+  .text-body {
+    @apply text-slate-600 leading-relaxed;
+  }
+
+  .text-caption {
+    @apply text-slate-400 text-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-teal-50 text-teal-700 border border-teal-200;
+  }
+
+  .badge-accent {
+    @apply badge bg-amber-50 text-amber-700 border border-amber-200;
+  }
+}

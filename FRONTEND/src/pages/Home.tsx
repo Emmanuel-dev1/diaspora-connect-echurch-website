@@ -1,4 +1,4 @@
-// src/pages/Home.tsx
+// frontend/src/pages/Home.tsx
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
@@ -18,7 +18,7 @@ export default function Home() {
             onError={() => setVideoError(true)}
             className="absolute w-full h-full object-cover"
           >
-            <source src="/videos/church-logo.mp4" type="video/mp4" />
+            <source src="/videos/church-background.mp4" type="video/mp4" />
           </video>
         )}
         <div className={`absolute inset-0 ${
@@ -74,11 +74,11 @@ export default function Home() {
           {/* Verse */}
           <div className="pt-8 border-t border-slate-200/60">
             <blockquote className="space-y-1">
-              <p className="text-slate-400 italic text-base text-black/60">
+              <p className="text-slate-500 italic text-base">
                 "For where two or three gather in my name,
                 <br className="hidden sm:block" /> there am I with them."
               </p>
-              <cite className="text-slate-300 text-sm not-italic text-black/60">
+              <cite className="text-slate-400 text-sm not-italic">
                 Matthew 18:20
               </cite>
             </blockquote>

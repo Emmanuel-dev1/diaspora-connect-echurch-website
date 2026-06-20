@@ -46,15 +46,6 @@ function formatDate(dateString: string): string {
   })
 }
 
-function formatTime(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  })
-}
-
 function formatLocalTime(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleTimeString('en-US', {
